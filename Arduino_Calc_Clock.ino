@@ -7,6 +7,7 @@
 
 #include <ThreeWire.h>  
 #include <RtcDS1302.h>
+#include <ArduinoJson.h>
 //YWROBOT
 //Compatible with the Arduino IDE 1.0
 //Library version:1.1
@@ -16,14 +17,21 @@ ThreeWire myWire(4,5,2); // IO, SCLK, CE
 RtcDS1302<ThreeWire> Rtc(myWire);
 LiquidCrystal_I2C lcd(0x27,20,4);  // set the LCD address to 0x27 for a 16 chars and 2 line display
 
+const char* hourJsonString = "{\"00\": [\"0 + 0\", \"0 - 0\", \"0 x 0\"]}";
+
 void setup () 
 {
     lcd.init();                      // initialize the lcd 
     // Print a message to the LCD.
     lcd.backlight();
 
-    // Serial.begin(57600);
+    Serial.begin(57600);
+    JsonDocument hourJson;
+    deserializeJson(hourJson, hourJsonString);
+    JsonArray hourArray = hourJson["00"];
+    const char* hourStgring = hourArray[1];
 
+    Serial.print(hourStgring);
     // Serial.print("compiled: ");
     // Serial.print(__DATE__);
     // Serial.println(__TIME__);
