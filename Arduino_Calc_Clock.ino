@@ -7,7 +7,6 @@
 
 #include <ThreeWire.h>  
 #include <RtcDS1302.h>
-#include <ArduinoJson.h>
 //YWROBOT
 //Compatible with the Arduino IDE 1.0
 //Library version:1.1
