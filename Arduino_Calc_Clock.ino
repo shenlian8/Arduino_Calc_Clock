@@ -16,13 +16,25 @@ ThreeWire myWire(4,5,2); // IO, SCLK, CE
 RtcDS1302<ThreeWire> Rtc(myWire);
 LiquidCrystal_I2C lcd(0x27,20,4);  // set the LCD address to 0x27 for a 16 chars and 2 line display
 
+String line1;
+String line2;
+
+long randomNumber;
+
 void setup () 
 {
+    randomSeed(analogRead(0));
+    
     lcd.init();                      // initialize the lcd 
     // Print a message to the LCD.
     lcd.backlight();
-
-    Serial.begin(57600);
+    
+    lcd.setCursor(0,0);
+    lcd.print("Initializing...");
+    lcd.setCursor(0,1);
+    lcd.print("Please wait!");
+    
+    //Serial.begin(57600);
 
     // Serial.print("compiled: ");
     // Serial.print(__DATE__);
@@ -79,41 +91,48 @@ void loop ()
     // printDateTime(now);
     // Serial.println();
 
-    char timeString[16];
-    char datestring[16];
+    // char timeString[16];
+    // char datestring[16];
 
-    snprintf_P(timeString, 
+    
+    /*snprintf_P(timeString, 
             countof(timeString),
             PSTR("%02u:%02u:%02u"),
             now.Hour(),
             now.Minute(),
             now.Second() );
-
+    */
+    /*
     snprintf_P(datestring, 
             countof(datestring),
             PSTR("%04u-%02u-%02u"),
             now.Year(),
             now.Month(),
             now.Day() );
-    
-    lcd.setCursor(0,0);
-    lcd.print(timeString);
-
-    lcd.setCursor(0,1);
-    lcd.print(datestring);
-
+    */
     if (!now.IsValid())
     {
-        // Common Causes:
-        //    1) the battery on the device is low or even missing and the power line was disconnected
-        // Serial.println("RTC lost confidence in the DateTime!");
-        // lcd.setCursor(0,0);
-        // lcd.print("RTC lost time");
-    }
+      lcd.print("Time Error!");
+    } else
+    {
+      if (now.Second() % 15 == 0)
+      {
+        set3NumberCalc(now.Hour(), line1);
+        set3NumberCalc(now.Minute(), line2);
+        
+        lcd.clear();
 
-    delay(1000); // ten seconds
+        lcd.setCursor(0,0);
+        lcd.print(line1);
+
+        lcd.setCursor(0,1);
+        lcd.print(line2);
+      }
+    }
+    //delay(10000); // ten seconds
 }
 
+/*
 #define countof(a) (sizeof(a) / sizeof(a[0]))
 
 void printDateTime(const RtcDateTime& dt)
@@ -130,4 +149,198 @@ void printDateTime(const RtcDateTime& dt)
             dt.Minute(),
             dt.Second() );
     Serial.print(datestring);
+}
+*/
+
+void set3NumberCalc(const int targetNumber, const String& line)
+{
+  int totalFound = 0;
+  int result;
+
+  for (int i = 0; i <= 9; i ++) 
+    for (int j = 0; j <= 9; j ++)
+      for (int k = 0; k<= 9; k ++)
+      {
+        // + +
+        result = i + j + k;
+        if (result == targetNumber)
+        {
+          totalFound ++;
+        }
+
+        // + -
+        result = i + j - k;
+        if (result == targetNumber)
+        {
+          totalFound ++;
+        }
+
+        // + *
+        result = i + j * k;
+        if (result == targetNumber)
+        {
+          totalFound ++;
+        }
+
+        // * +
+        result = i * j + k;
+        if (result == targetNumber)
+        {
+          totalFound ++;
+        }
+
+        // * -
+        result = i * j - k;
+        if (result == targetNumber)
+        {
+          totalFound ++;
+        }
+
+        // - +
+        if (i >= j)
+        {
+          result = i - j + k;
+          if (result == targetNumber)
+          {
+            totalFound ++;
+          }
+        }
+
+        // - -
+        if (i >= j)
+        {
+          result = i - j - k;
+          if (result == targetNumber)
+          {
+            totalFound ++;
+          }
+        }
+
+        // - *
+        result = i - j * k;
+        if (result == targetNumber)
+        {
+          totalFound ++;
+        }
+      }
+
+  randomNumber = random(totalFound);
+
+  /*
+  Serial.println("Target:");
+  Serial.println(targetNumber);
+  Serial.println("Total found:");
+  Serial.println(totalFound);
+  Serial.println("Random:");
+  Serial.println(randomTarget);
+  */
+
+  totalFound = 0;
+
+  for (int i = 0; i <= 9; i ++) 
+    for (int j = 0; j <= 9; j ++)
+      for (int k = 0; k<= 9; k ++)
+      {
+        // + +
+        result = i + j + k;
+        if (result == targetNumber)
+        {
+          totalFound ++;
+          if (totalFound > randomNumber)
+          {
+            line = String(i) + " + " + String(j) + " + " + String(k);
+            return;
+          }
+        }
+
+        // + -
+        result = i + j - k;
+        if (result == targetNumber)
+        {
+          totalFound ++;
+          if (totalFound > randomNumber)
+          {
+            line = String(i) + " + " + String(j) + " - " + String(k);
+            return;
+          }
+        }
+
+        // + *
+        result = i + j * k;
+        if (result == targetNumber)
+        {
+          totalFound ++;
+          if (totalFound > randomNumber)
+          {
+            line = String(i) + " + " + String(j) + " x " + String(k);
+            return;
+          }
+        }
+
+        // * +
+        result = i * j + k;
+        if (result == targetNumber)
+        {
+          totalFound ++;
+          if (totalFound > randomNumber)
+          {
+            line = String(i) + " x " + String(j) + " + " + String(k);
+            return;
+          }
+        }
+
+        // * -
+        result = i * j - k;
+        if (result == targetNumber)
+        {
+          totalFound ++;
+          if (totalFound > randomNumber)
+          {
+            line = String(i) + " x " + String(j) + " - " + String(k);
+            return;
+          }
+        }
+
+        // - +
+        if (i >= j)
+        {
+          result = i - j + k;
+          if (result == targetNumber)
+          {
+            totalFound ++;
+            if (totalFound > randomNumber)
+            {
+              line = String(i) + " - " + String(j) + " + " + String(k);
+              return;
+            }
+          }
+        }
+
+        // - -
+        if (i >= j)
+        {
+          result = i - j - k;
+          if (result == targetNumber)
+          {
+            totalFound ++;
+            if (totalFound > randomNumber)
+            {
+              line = String(i) + " - " + String(j) + " - " + String(k);
+              return;
+            }
+          }
+        }
+
+        // - *
+        result = i - j * k;
+        if (result == targetNumber)
+        {
+          totalFound ++;
+          if (totalFound > randomNumber)
+          {
+            line = String(i) + " - " + String(j) + " x " + String(k);
+            return;
+          }
+        }
+      }
 }
