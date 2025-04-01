@@ -1,32 +1,72 @@
-// CONNECTIONS:
-// DS1302 CLK/SCLK --> 5
-// DS1302 DAT/IO --> 4
-// DS1302 RST/CE --> 2
-// DS1302 VCC --> 3.3v - 5v
-// DS1302 GND --> GND
-
-#include <ThreeWire.h>  
-#include <RtcDS1302.h>
-//YWROBOT
-//Compatible with the Arduino IDE 1.0
-//Library version:1.1
 #include <LiquidCrystal_I2C.h>
+#include <Wire.h> // must be included here so that Arduino library object file references work
+#include <RtcDS3231.h>
 
-ThreeWire myWire(4,5,2); // IO, SCLK, CE
-RtcDS1302<ThreeWire> Rtc(myWire);
+RtcDS3231<TwoWire> Rtc(Wire);
+
 LiquidCrystal_I2C lcd(0x27,20,4);  // set the LCD address to 0x27 for a 16 chars and 2 line display
 
 String line1;
 String line2;
 
+String oldLine1 = "";
+String oldLine2 = "";
+
 long randomNumber;
+
+bool showReadable = true;
+
+RtcDateTime lastUpdate;
+
+// handy routine to return true if there was an error
+// but it will also print out an error message with the given topic
+bool wasError(const char* errorTopic = "")
+{
+    uint8_t error = Rtc.LastError();
+    if (error != 0)
+    {
+        // we have a communications error
+        // see https://www.arduino.cc/reference/en/language/functions/communication/wire/endtransmission/
+        // for what the number means
+        // Serial.print("[");
+        // Serial.print(errorTopic);
+        // Serial.print("] WIRE communications error (");
+        // Serial.print(error);
+        // Serial.print(") : ");
+
+        switch (error)
+        {
+        case Rtc_Wire_Error_None:
+            // Serial.println("(none?!)");
+            break;
+        case Rtc_Wire_Error_TxBufferOverflow:
+            // Serial.println("transmit buffer overflow");
+            break;
+        case Rtc_Wire_Error_NoAddressableDevice:
+            // Serial.println("no device responded");
+            break;
+        case Rtc_Wire_Error_UnsupportedRequest:
+            // Serial.println("device doesn't support request");
+            break;
+        case Rtc_Wire_Error_Unspecific:
+            // Serial.println("unspecified error");
+            break;
+        case Rtc_Wire_Error_CommunicationTimeout:
+            // Serial.println("communications timed out");
+            break;
+        }
+        return true;
+    }
+    return false;
+}
 
 void setup () 
 {
+    // initialize random seed
     randomSeed(analogRead(0));
     
-    lcd.init();                      // initialize the lcd 
-    // Print a message to the LCD.
+    // initialize the lcd 
+    lcd.init();                      
     lcd.backlight();
     
     lcd.setCursor(0,0);
@@ -34,13 +74,13 @@ void setup ()
     lcd.setCursor(0,1);
     lcd.print("Please wait!");
     
-    //Serial.begin(57600);
-
-    // Serial.print("compiled: ");
-    // Serial.print(__DATE__);
-    // Serial.println(__TIME__);
+    // initialize sierial
+    // Serial.begin(115200);
 
     Rtc.Begin();
+#if defined(WIRE_HAS_TIMEOUT)
+    Wire.setWireTimeout(3000 /* us */, true /* reset_on_timeout */);
+#endif
 
     RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
     // printDateTime(compiled);
@@ -48,86 +88,130 @@ void setup ()
 
     if (!Rtc.IsDateTimeValid()) 
     {
-        // Common Causes:
-        //    1) first time you ran and the device wasn't running yet
-        //    2) the battery on the device is low or even missing
+        if (!wasError("setup IsDateTimeValid"))
+        {
+            // Common Causes:
+            //    1) first time you ran and the device wasn't running yet
+            //    2) the battery on the device is low or even missing
 
-        //Serial.println("RTC lost confidence in the DateTime!");
-        Rtc.SetDateTime(compiled);
-    }
+            //Serial.println("RTC lost confidence in the DateTime!");
 
-    if (Rtc.GetIsWriteProtected())
-    {
-        // Serial.println("RTC was write protected, enabling writing now");
-        Rtc.SetIsWriteProtected(false);
+            // following line sets the RTC to the date & time this sketch was compiled
+            // it will also reset the valid flag internally unless the Rtc device is
+            // having an issue
+
+            Rtc.SetDateTime(compiled);
+        }
     }
 
     if (!Rtc.GetIsRunning())
     {
-        // Serial.println("RTC was not actively running, starting now");
-        Rtc.SetIsRunning(true);
+        if (!wasError("setup GetIsRunning"))
+        {
+            // Serial.println("RTC was not actively running, starting now");
+            Rtc.SetIsRunning(true);
+        }
     }
 
     RtcDateTime now = Rtc.GetDateTime();
-    if (now < compiled) 
+    if (!wasError("setup GetDateTime"))
     {
-        // Serial.println("RTC is older than compile time!  (Updating DateTime)");
-        Rtc.SetDateTime(compiled);
+        if (now < compiled)
+        {
+            // Serial.println("RTC is older than compile time, updating DateTime");
+            Rtc.SetDateTime(compiled);
+        }
+        else if (now > compiled)
+        {
+            // Serial.println("RTC is newer than compile time, this is expected");
+        }
+        else if (now == compiled)
+        {
+            // Serial.println("RTC is the same as compile time, while not expected all is still fine");
+        }
     }
-    else if (now > compiled) 
-    {
-        // Serial.println("RTC is newer than compile time. (this is expected)");
-    }
-    else if (now == compiled) 
-    {
-        // Serial.println("RTC is the same as compile time! (not expected but all is fine)");
-    }
+
+    // never assume the Rtc was last configured by you, so
+    // just clear them to your needed state
+    Rtc.Enable32kHzPin(false);
+    wasError("setup Enable32kHzPin");
+    Rtc.SetSquareWavePin(DS3231SquareWavePin_ModeNone); 
+    wasError("setup SetSquareWavePin");
+
 }
 
 void loop () 
 {
-    RtcDateTime now = Rtc.GetDateTime();
 
-    // printDateTime(now);
-    // Serial.println();
-
-    // char timeString[16];
-    // char datestring[16];
-
-    
-    /*snprintf_P(timeString, 
-            countof(timeString),
-            PSTR("%02u:%02u:%02u"),
-            now.Hour(),
-            now.Minute(),
-            now.Second() );
-    */
-    /*
-    snprintf_P(datestring, 
-            countof(datestring),
-            PSTR("%04u-%02u-%02u"),
-            now.Year(),
-            now.Month(),
-            now.Day() );
-    */
-    if (!now.IsValid())
+    if (!Rtc.IsDateTimeValid()) 
     {
-      lcd.print("Time Error!");
-    } else
-    {
-      if (now.Second() % 15 == 0)
-      {
-        randomNumber = random(2);
-        if (randomNumber == 0)
+        if (!wasError("loop IsDateTimeValid"))
         {
-          set2NumberCalc(now.Hour(), line1);
-          set3NumberCalc(now.Minute(), line2);          
+            // Common Causes:
+            //    1) the battery on the device is low or even missing and the power line was disconnected
+            // Serial.println("RTC lost confidence in the DateTime!");
+            line1 = "RTC error!";
+        }
+    } else 
+    {
+      RtcDateTime now = Rtc.GetDateTime();
+
+      if (now != lastUpdate) 
+      {
+        // Serial.println();
+        // Serial.println("====================");
+
+        lastUpdate = now;
+
+        if (showReadable)
+        {
+          char timeString[16];
+          char datestring[16];
+
+          
+          snprintf_P(timeString, 
+                  countof(timeString),
+                  PSTR("%02u:%02u:%02u"),
+                  now.Hour(),
+                  now.Minute(),
+                  now.Second() );
+
+          snprintf_P(datestring, 
+                  countof(datestring),
+                  PSTR("%04u-%02u-%02u"),
+                  now.Year(),
+                  now.Month(),
+                  now.Day() );
+
+          line1 = String (timeString);
+          line2 = String (datestring);
         } else
         {
-          set3NumberCalc(now.Hour(), line1);
-          set2NumberCalc(now.Minute(), line2);
+          if (now.Second() % 15 == 0)
+          {
+            randomNumber = random(2);
+
+            // Serial.println(String(randomNumber));
+            if (randomNumber == 0)
+            {
+              // Serial.println("Random 0");
+              set2NumberCalc(now.Hour(), line1);
+              set3NumberCalc(now.Minute(), line2); 
+            } else
+            {
+              // Serial.println("Random 1");
+              set3NumberCalc(now.Hour(), line1);
+              set2NumberCalc(now.Minute(), line2);
+            }
+          }
         }
-        
+      }
+    }
+    if (line1 != oldLine1 or line2 != oldLine2) 
+    {
+        oldLine1 = line1;
+        oldLine2 = line2;
+
         lcd.clear();
 
         lcd.setCursor(0,0);
@@ -135,9 +219,8 @@ void loop ()
 
         lcd.setCursor(0,1);
         lcd.print(line2);
-      }
     }
-    //delay(10000); // ten seconds
+    // delay(1000); // one seconds
 }
 
 void set3NumberCalc(const int targetNumber, const String& line)
@@ -220,7 +303,7 @@ void set3NumberCalc(const int targetNumber, const String& line)
   Serial.println("Total found:");
   Serial.println(totalFound);
   Serial.println("Random:");
-  Serial.println(randomTarget);
+  Serial.println(randomNumber);
   */
 
   totalFound = 0;
@@ -374,7 +457,7 @@ void set2NumberCalc(const int targetNumber, const String& line)
   Serial.println("Total found:");
   Serial.println(totalFound);
   Serial.println("Random:");
-  Serial.println(randomTarget);
+  Serial.println(randomNumber);
   */
 
   totalFound = 0;
