@@ -117,8 +117,16 @@ void loop ()
     {
       if (now.Second() % 15 == 0)
       {
-        set3NumberCalc(now.Hour(), line1);
-        set3NumberCalc(now.Minute(), line2);
+        randomNumber = random(2);
+        if (randomNumber == 0)
+        {
+          set2NumberCalc(now.Hour(), line1);
+          set3NumberCalc(now.Minute(), line2);          
+        } else
+        {
+          set3NumberCalc(now.Hour(), line1);
+          set2NumberCalc(now.Minute(), line2);
+        }
         
         lcd.clear();
 
@@ -131,26 +139,6 @@ void loop ()
     }
     //delay(10000); // ten seconds
 }
-
-/*
-#define countof(a) (sizeof(a) / sizeof(a[0]))
-
-void printDateTime(const RtcDateTime& dt)
-{
-    char datestring[20];
-
-    snprintf_P(datestring, 
-            countof(datestring),
-            PSTR("%04u-%02u-%02u %02u:%02u:%02u"),
-            dt.Year(),
-            dt.Month(),
-            dt.Day(),
-            dt.Hour(),
-            dt.Minute(),
-            dt.Second() );
-    Serial.print(datestring);
-}
-*/
 
 void set3NumberCalc(const int targetNumber, const String& line)
 {
@@ -343,4 +331,94 @@ void set3NumberCalc(const int targetNumber, const String& line)
           }
         }
       }
+}
+
+void set2NumberCalc(const int targetNumber, const String& line)
+{
+  int totalFound = 0;
+  int result;
+
+  for (int i = 0; i <= 58; i ++)
+    for (int j = 0; j<= 58; j ++)
+    {
+      if (! (i >= 10 or j <= 10))
+      {
+        // +
+        result = i + j;
+        if (result == targetNumber)
+        {
+          totalFound ++;
+        }
+
+        // -
+        result = i - j;
+        if (result == targetNumber)
+        {
+          totalFound ++;
+        }
+
+        // *
+        result = i * j;
+        if (result == targetNumber)
+        {
+          totalFound ++;
+        }
+      }
+    }
+
+  randomNumber = random(totalFound);
+
+  /*
+  Serial.println("Target:");
+  Serial.println(targetNumber);
+  Serial.println("Total found:");
+  Serial.println(totalFound);
+  Serial.println("Random:");
+  Serial.println(randomTarget);
+  */
+
+  totalFound = 0;
+
+  for (int i = 0; i <= 68; i ++)
+    for (int j = 0; j<= 68; j ++)
+    {
+      if (! (i >= 10 or j <= 10))
+      {
+        // +
+        result = i + j;
+        if (result == targetNumber)
+        {
+          totalFound ++;
+          if (totalFound > randomNumber)
+          {
+            line = String(i) + " + " + String(j);
+            return;
+          }
+        }
+
+        // + -
+        result = i - j;
+        if (result == targetNumber)
+        {
+          totalFound ++;
+          if (totalFound > randomNumber)
+          {
+            line = String(i) + " - " + String(j);
+            return;
+          }
+        }
+
+        // *
+        result = i * j;
+        if (result == targetNumber)
+        {
+          totalFound ++;
+          if (totalFound > randomNumber)
+          {
+            line = String(i) + " x " + String(j);
+            return;
+          }
+        }
+      }
+    }
 }
