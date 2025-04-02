@@ -2,6 +2,8 @@
 #include <Wire.h> // must be included here so that Arduino library object file references work
 #include <RtcDS3231.h>
 
+const byte interruptPin = 2;
+
 RtcDS3231<TwoWire> Rtc(Wire);
 
 LiquidCrystal_I2C lcd(0x27,20,4);  // set the LCD address to 0x27 for a 16 chars and 2 line display
@@ -60,6 +62,11 @@ bool wasError(const char* errorTopic = "")
     return false;
 }
 
+void changeDisplay ()
+{
+  showReadable = ! showReadable;
+}
+
 void setup () 
 {
     // initialize random seed
@@ -75,7 +82,9 @@ void setup ()
     lcd.print("Please wait!");
     
     // initialize sierial
-    // Serial.begin(115200);
+    Serial.begin(115200);
+
+    attachInterrupt(digitalPinToInterrupt(interruptPin), changeDisplay, FALLING);
 
     Rtc.Begin();
 #if defined(WIRE_HAS_TIMEOUT)
@@ -158,69 +167,79 @@ void loop ()
 
       if (now != lastUpdate) 
       {
-        // Serial.println();
-        // Serial.println("====================");
-
         lastUpdate = now;
 
         if (showReadable)
         {
-          char timeString[16];
-          char datestring[16];
-
-          
-          snprintf_P(timeString, 
-                  countof(timeString),
-                  PSTR("%02u:%02u:%02u"),
-                  now.Hour(),
-                  now.Minute(),
-                  now.Second() );
-
-          snprintf_P(datestring, 
-                  countof(datestring),
-                  PSTR("%04u-%02u-%02u"),
-                  now.Year(),
-                  now.Month(),
-                  now.Day() );
-
-          line1 = String (timeString);
-          line2 = String (datestring);
+          setNormalTime(now);
         } else
         {
           if (now.Second() % 15 == 0)
           {
-            randomNumber = random(2);
-
-            // Serial.println(String(randomNumber));
-            if (randomNumber == 0)
-            {
-              // Serial.println("Random 0");
-              set2NumberCalc(now.Hour(), line1);
-              set3NumberCalc(now.Minute(), line2); 
-            } else
-            {
-              // Serial.println("Random 1");
-              set3NumberCalc(now.Hour(), line1);
-              set2NumberCalc(now.Minute(), line2);
-            }
+            setTimeCalc(now);
           }
+        }
+
+        if ((line1 != oldLine1) || (line2 != oldLine2)) 
+        {
+            oldLine1 = line1;
+            oldLine2 = line2;
+
+            // Serial.println(line1);
+
+            lcd.clear();
+
+            lcd.setCursor(0, 0);
+            lcd.print(line1);
+
+            lcd.setCursor(0, 1);
+            lcd.print(line2);
         }
       }
     }
-    if (line1 != oldLine1 or line2 != oldLine2) 
-    {
-        oldLine1 = line1;
-        oldLine2 = line2;
-
-        lcd.clear();
-
-        lcd.setCursor(0,0);
-        lcd.print(line1);
-
-        lcd.setCursor(0,1);
-        lcd.print(line2);
-    }
     // delay(1000); // one seconds
+}
+
+void setNormalTime(RtcDateTime now)
+{
+  char timeString[16];
+  char datestring[16];
+
+
+  snprintf_P(timeString, 
+          countof(timeString),
+          PSTR("%02u:%02u:%02u"),
+          now.Hour(),
+          now.Minute(),
+          now.Second() );
+
+  snprintf_P(datestring, 
+          countof(datestring),
+          PSTR("%04u-%02u-%02u"),
+          now.Year(),
+          now.Month(),
+          now.Day() );
+
+  line1 = String (timeString);
+  line2 = String (datestring);
+}
+
+void setTimeCalc(RtcDateTime now)
+{
+  randomNumber = random(2);
+
+  //Serial.println(String(randomNumber));
+  if (randomNumber == 0)
+  {
+    // Serial.println("Random 0");
+    set2NumberCalc(now.Hour(), line1);
+    set3NumberCalc(now.Minute(), line2); 
+  } else
+  {
+    // Serial.println("Random 1");
+    set3NumberCalc(now.Hour(), line1);
+    set2NumberCalc(now.Minute(), line2);
+  }
 }
 
 void set3NumberCalc(const int targetNumber, const String& line)
@@ -424,7 +443,7 @@ void set2NumberCalc(const int targetNumber, const String& line)
   for (int i = 0; i <= 58; i ++)
     for (int j = 0; j<= 58; j ++)
     {
-      if (! (i >= 10 or j <= 10))
+      if ((i <= 9) || (j <= 9))
       {
         // +
         result = i + j;
@@ -465,7 +484,7 @@ void set2NumberCalc(const int targetNumber, const String& line)
   for (int i = 0; i <= 68; i ++)
     for (int j = 0; j<= 68; j ++)
     {
-      if (! (i >= 10 or j <= 10))
+      if ((i <= 9) || (j <= 9))
       {
         // +
         result = i + j;
