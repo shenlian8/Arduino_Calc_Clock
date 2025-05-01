@@ -45,6 +45,11 @@ long randomNumber;
 bool showReadable = true;
 bool oldShowReadable = ! showReadable;
 
+int birthMonth = 10;
+int birthDay = 26;
+
+int showHappy = 0;
+
 RtcDateTime lastUpdate;
 
 // handy routine to return true if there was an error
@@ -92,8 +97,8 @@ bool wasError(const char* errorTopic = "")
 void changeDisplay ()
 {
   Serial.println("Button pressed");
-  delay(300);
   showReadable = ! showReadable;
+  showHappy ++;
 }
 
 void setup () 
@@ -225,6 +230,12 @@ void updateTime()
       if (line2.length() == 4)
       {
         line2 = " " + line2;
+      }
+          
+      if((now.Month() == birthMonth) && (now.Day() == birthDay) && (showHappy % 10 < 5))
+      {
+        line1 = "HAPPY";
+        line2 = String(now.Year() - 2012) +" J.";
       }
 
       if ((line1 != oldLine1) || (line2 != oldLine2)) 
