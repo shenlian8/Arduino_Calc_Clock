@@ -20,7 +20,7 @@ LEDMatrixDriver lmd(LEDMATRIX_SEGMENTS, LEDMATRIX_CS_PIN);
 
 // Marquee text
 // char text[] = "** LED MATRIX DEMO! ** (1234567890) ++ \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\" ++ <$%/=?'.@,> --";
-char text[] = "CLOCKINIT.";
+String text = "CLOCKINIT.";
 
 // Only un-comment one of the lines below
 #define L2R		//Left to right scroll		
@@ -43,6 +43,7 @@ String oldLine2 = "";
 long randomNumber;
 
 bool showReadable = true;
+bool oldShowReadable = ! showReadable;
 
 RtcDateTime lastUpdate;
 
@@ -90,6 +91,8 @@ bool wasError(const char* errorTopic = "")
 
 void changeDisplay ()
 {
+  Serial.println("Button pressed");
+  delay(300);
   showReadable = ! showReadable;
 }
 
@@ -99,13 +102,7 @@ void setup ()
     lmd.setEnabled(true);
     lmd.setIntensity(5);   // 0 = low, 10 = high
 
-      // Draw the text to the current position
-    int len = strlen(text);
-    drawString(text, len, x, 0);
-    // In case you wonder why we don't have to call lmd.clear() in every loop: The font has a opaque (black) background...
-
-    // Toggle display of the new framebuffer
-    lmd.display();
+    showText();
 
     // initialize random seed
     randomSeed(analogRead(0));
@@ -175,51 +172,75 @@ void setup ()
     wasError("setup Enable32kHzPin");
     Rtc.SetSquareWavePin(DS3231SquareWavePin_ModeNone); 
     wasError("setup SetSquareWavePin");
-
 }
 
 void loop () 
 {
+    updateTime();
+    delay(500);
+}
 
-    if (!Rtc.IsDateTimeValid()) 
-    {
-        if (!wasError("loop IsDateTimeValid"))
-        {
-            // Common Causes:
-            //    1) the battery on the device is low or even missing and the power line was disconnected
-            // Serial.println("RTC lost confidence in the DateTime!");
-            line1 = "RTC error!";
-        }
-    } else 
-    {
-      RtcDateTime now = Rtc.GetDateTime();
-
-      if (now != lastUpdate) 
+void updateTime()
+{
+  if (!Rtc.IsDateTimeValid()) 
+  {
+      if (!wasError("loop IsDateTimeValid"))
       {
-        lastUpdate = now;
+          // Common Causes:
+          //    1) the battery on the device is low or even missing and the power line was disconnected
+          // Serial.println("RTC lost confidence in the DateTime!");
+          text = "RTC error!";
 
-        if (showReadable)
+          showText();
+      }
+  } else 
+  {
+    RtcDateTime now = Rtc.GetDateTime();
+
+    if (now != lastUpdate) 
+    {
+      lastUpdate = now;
+
+      if (showReadable)
+      {
+        if ((now.Second() % 15 == 0) || (showReadable != oldShowReadable))
         {
+          oldShowReadable = showReadable;
           setNormalTime(now);
-        } else
-        {
-          if (now.Second() % 15 == 0)
-          {
-            setTimeCalc(now);
-          }
         }
-
-        if ((line1 != oldLine1) || (line2 != oldLine2)) 
+      } else
+      {
+        if ((now.Second() % 15 == 0) || (showReadable != oldShowReadable))
         {
-            oldLine1 = line1;
-            oldLine2 = line2;
-
-            // Serial.println(line1);
-
+          oldShowReadable = showReadable;
+          setTimeCalc(now);
         }
       }
+
+      if (line1.length() == 4)
+      {
+        line1 = " " + line1;
+      }
+
+      if (line2.length() == 4)
+      {
+        line2 = " " + line2;
+      }
+
+      if ((line1 != oldLine1) || (line2 != oldLine2)) 
+      {
+          oldLine1 = line1;
+          oldLine2 = line2;
+
+          Serial.println(line1);
+          Serial.println(line2);
+
+          text = line2 + line1;
+
+          showText();
+      }
     }
-    // delay(1000); // one seconds
+  }
 }
 
 // This is the font definition. You can use http://gurgleapps.com/tools/matrix to create your own font or sprites.
@@ -304,6 +325,23 @@ void drawString(char* text, int len, int x, int y )
       drawSprite( font[c], x + idx * 8, y, 8, 8 );
   }
 }
+
+void showText()
+{
+  // Draw the text to the current position
+  int lineLength  = text.length() + 1;
+  char line[lineLength];
+
+  text.toCharArray(line, lineLength);
+  int len = strlen(line);
+  drawString(line, len, x, 0);
+  // In case you wonder why we don't have to call lmd.clear() in every loop: The font has a opaque (black) background...
+
+  // Toggle display of the new framebuffer
+  lmd.display();
+
+}
+
 /**
  * This draws a sprite to the given position using the width and height supplied (usually 8x8)
  */
@@ -335,15 +373,13 @@ void setNormalTime(RtcDateTime now)
 
   snprintf_P(timeString, 
           countof(timeString),
-          PSTR("%02u:%02u:%02u"),
+          PSTR("%02u:%02u"),
           now.Hour(),
-          now.Minute(),
-          now.Second() );
+          now.Minute());
 
   snprintf_P(datestring, 
           countof(datestring),
-          PSTR("%04u-%02u-%02u"),
-          now.Year(),
+          PSTR("%02u-%02u"),
           now.Month(),
           now.Day() );
 
@@ -465,7 +501,7 @@ void set3NumberCalc(const int targetNumber, const String& line)
           totalFound ++;
           if (totalFound > randomNumber)
           {
-            line = String(i) + " + " + String(j) + " + " + String(k);
+            line = String(i) + "+" + String(j) + "+" + String(k);
             return;
           }
         }
@@ -477,7 +513,7 @@ void set3NumberCalc(const int targetNumber, const String& line)
           totalFound ++;
           if (totalFound > randomNumber)
           {
-            line = String(i) + " + " + String(j) + " - " + String(k);
+            line = String(i) + "+" + String(j) + "-" + String(k);
             return;
           }
         }
@@ -489,7 +525,7 @@ void set3NumberCalc(const int targetNumber, const String& line)
           totalFound ++;
           if (totalFound > randomNumber)
           {
-            line = String(i) + " + " + String(j) + " x " + String(k);
+            line = String(i) + "+" + String(j) + "X" + String(k);
             return;
           }
         }
@@ -501,7 +537,7 @@ void set3NumberCalc(const int targetNumber, const String& line)
           totalFound ++;
           if (totalFound > randomNumber)
           {
-            line = String(i) + " x " + String(j) + " + " + String(k);
+            line = String(i) + "X" + String(j) + "+" + String(k);
             return;
           }
         }
@@ -513,7 +549,7 @@ void set3NumberCalc(const int targetNumber, const String& line)
           totalFound ++;
           if (totalFound > randomNumber)
           {
-            line = String(i) + " x " + String(j) + " - " + String(k);
+            line = String(i) + "X" + String(j) + "-" + String(k);
             return;
           }
         }
@@ -527,7 +563,7 @@ void set3NumberCalc(const int targetNumber, const String& line)
             totalFound ++;
             if (totalFound > randomNumber)
             {
-              line = String(i) + " - " + String(j) + " + " + String(k);
+              line = String(i) + "-" + String(j) + "+" + String(k);
               return;
             }
           }
@@ -542,7 +578,7 @@ void set3NumberCalc(const int targetNumber, const String& line)
             totalFound ++;
             if (totalFound > randomNumber)
             {
-              line = String(i) + " - " + String(j) + " - " + String(k);
+              line = String(i) + "-" + String(j) + "-" + String(k);
               return;
             }
           }
@@ -555,7 +591,7 @@ void set3NumberCalc(const int targetNumber, const String& line)
           totalFound ++;
           if (totalFound > randomNumber)
           {
-            line = String(i) + " - " + String(j) + " x " + String(k);
+            line = String(i) + "-" + String(j) + "X" + String(k);
             return;
           }
         }
@@ -567,8 +603,8 @@ void set2NumberCalc(const int targetNumber, const String& line)
   int totalFound = 0;
   int result;
 
-  for (int i = 0; i <= 58; i ++)
-    for (int j = 0; j<= 58; j ++)
+  for (int i = 0; i <= 68; i ++)
+    for (int j = 0; j<= 68; j ++)
     {
       if ((i <= 9) || (j <= 9))
       {
@@ -620,7 +656,7 @@ void set2NumberCalc(const int targetNumber, const String& line)
           totalFound ++;
           if (totalFound > randomNumber)
           {
-            line = String(i) + " + " + String(j);
+            line = String(i) + "+" + String(j);
             return;
           }
         }
@@ -632,7 +668,7 @@ void set2NumberCalc(const int targetNumber, const String& line)
           totalFound ++;
           if (totalFound > randomNumber)
           {
-            line = String(i) + " - " + String(j);
+            line = String(i) + "-" + String(j);
             return;
           }
         }
@@ -644,7 +680,7 @@ void set2NumberCalc(const int targetNumber, const String& line)
           totalFound ++;
           if (totalFound > randomNumber)
           {
-            line = String(i) + " x " + String(j);
+            line = String(i) + "X" + String(j);
             return;
           }
         }
