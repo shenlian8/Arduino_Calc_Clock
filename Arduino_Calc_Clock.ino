@@ -44,6 +44,7 @@ long randomNumber;
 
 bool showReadable = true;
 bool oldShowReadable = ! showReadable;
+bool showSecond = true;
 
 int birthMonth = 10;
 int birthDay = 26;
@@ -208,7 +209,7 @@ void updateTime()
 
       if (showReadable)
       {
-        if ((now.Second() % 15 == 0) || (showReadable != oldShowReadable))
+        if (true)//(now.Second() % 15 == 0) || (showReadable != oldShowReadable))
         {
           oldShowReadable = showReadable;
           setNormalTime(now);
@@ -230,6 +231,16 @@ void updateTime()
       if (line2.length() == 4)
       {
         line2 = " " + line2;
+      }
+
+      if (line1.length() == 3)
+      {
+        line1 = "  " + line1;
+      }
+
+      if (line2.length() == 3)
+      {
+        line2 = "  " + line2;
       }
           
       if((now.Month() == birthMonth) && (now.Day() == birthDay) && (showHappy % 10 < 5))
@@ -381,12 +392,22 @@ void setNormalTime(RtcDateTime now)
   char timeString[16];
   char datestring[16];
 
-
-  snprintf_P(timeString, 
-          countof(timeString),
-          PSTR("%02u:%02u"),
-          now.Hour(),
-          now.Minute());
+  if(showSecond)
+  {
+    snprintf_P(timeString, 
+            countof(timeString),
+            PSTR("%02u:%02u"),
+            now.Hour(),
+            now.Minute());
+  } else
+  {
+    snprintf_P(timeString, 
+            countof(timeString),
+            PSTR("%02u %02u"),
+            now.Hour(),
+            now.Minute());
+  }
+  showSecond = ! showSecond;
 
   snprintf_P(datestring, 
           countof(datestring),
