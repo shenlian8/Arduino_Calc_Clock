@@ -28,30 +28,26 @@
 
 ## 接线说明
 
-### 1. 电源连接 (Power Supply)
+本项目支持 **Arduino Uno** 和 **Arduino Nano**，两者的接线引脚完全相同。以下是详细的接线映射表：
 
-*   **Arduino 5V** -> 连接到面包板的 **正极（+）** 电源轨。
-*   **Arduino GND** -> 连接到面包板的 **负极（-）** 电源轨。
+| 模块名称 | 模块引脚 | 连接到 Arduino Uno / Nano 引脚 | 作用说明 |
+| :--- | :--- | :--- | :--- |
+| **电源输入** | VCC / 5V | **5V** (连接到面包板的正极 `+` 轨) | 系统供电 |
+| | GND | **GND** (连接到面包板的负极 `-` 轨) | 系统共地 |
+| **MAX7219 LED点阵** | VCC | **5V** (面包板正极) | 屏幕供电 |
+| | GND | **GND** (面包板负极) | 屏幕接地 |
+| | DIN (Data In) | **D11** (硬件 SPI MOSI) | 串行数据输入 |
+| | CS / LOAD (Chip Select) | **D9** | 片选/使能信号 |
+| | CLK (Clock) | **D13** (硬件 SPI SCK) | 时钟信号 |
+| **DS3231 RTC 模块** | VCC | **5V** (或 3.3V) (面包板正极) | 时钟模块供电 |
+| | GND | **GND** (面包板负极) | 时钟模块接地 |
+| | SDA (Serial Data) | **A4** (硬件 I2C SDA) | I2C 数据传输 |
+| | SCL (Serial Clock) | **A5** (硬件 I2C SCL) | I2C 时钟同步 |
+| **模式切换按键** | 引脚 1 | **D2** (硬件外部中断 0) | 检测按键按下 |
+| | 引脚 2 | **GND** (面包板负极) | 按键接地 |
 
-### 2. LED 点阵模块 (MAX7219)
-
-*   **VCC** -> 面包板 **正极（+）**
-*   **GND** -> 面包板 **负极（-）**
-*   **DIN** (Data In) -> Arduino **D11**
-*   **CS** (Chip Select) / **LOAD** -> Arduino **D9**
-*   **CLK** (Clock) -> Arduino **D13**
-
-### 3. 实时时钟模块 (DS3231)
-
-*   **VCC** -> 面包板 **正极（+）**
-*   **GND** -> 面包板 **负极（-）**
-*   **SCL** (Serial Clock) -> Arduino **A5**
-*   **SDA** (Serial Data) -> Arduino **A4**
-
-### 4. 按钮 (Push Button)
-
-*   将按钮的一个引脚连接到 Arduino **D2**。
-*   将按钮的另一个引脚连接到面包板 **负极（-）**。
+> [!NOTE]
+> 由于 Arduino Uno 和 Arduino Nano 都基于 ATmega328P 芯片，它们的硬件 SPI (D11/D13)、I2C (A4/A5) 端口以及外部中断引脚 (D2) 是完全一致的，所以两者可以无缝替换，无需修改代码。
 
 ## 使用说明
 
